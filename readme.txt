@@ -4,7 +4,7 @@ Tags: cart, sort, woocommerce, category, order
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -34,6 +34,10 @@ The sort is applied server-side on the cart contents array, so the Cart block, m
 To customise the groups, use the `ccs_sort_groups` filter in your theme or a custom plugin.
 
 == Changelog ==
+
+= 1.1.0 =
+* Feature - Tri alphabétique des produits au sein de chaque groupe.
+
 
 = 1.0.1 =
 * Fix - fix: normalize dependabot.yml line endings for cross-platform CI.

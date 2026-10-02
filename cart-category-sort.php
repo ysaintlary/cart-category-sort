@@ -3,7 +3,7 @@
  * Plugin Name:       Cart Category Sort
  * Plugin URI:        https://github.com/ysaintlary/cart-category-sort
  * Description:       Trie les lignes du panier WooCommerce selon un ordre fixe de groupes définis par catégorie ou par produit.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Author:            Yves Saint-Lary
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CCS_VERSION', '1.0.0' );
+define( 'CCS_VERSION', '1.1.0' );
 
 /*
  * ──────────────────────────────────────────────
@@ -187,7 +187,7 @@ function ccs_sort_cart() {
 		return;
 	}
 
-	/* Calculer le rang et l'index d'origine de chaque ligne. */
+	/* Calculer le rang, le nom et l'index d'origine de chaque ligne. */
 	$positions = array();
 	$index     = 0;
 	foreach ( $cart->cart_contents as $key => $item ) {
@@ -199,17 +199,24 @@ function ccs_sort_cart() {
 			$product_id = $product->get_parent_id();
 		}
 
+		$name = $product instanceof \WC_Product ? $product->get_name() : '';
+
 		$positions[ $key ] = array(
 			'group' => ccs_get_product_group( $product_id ),
+			'name'  => mb_strtolower( $name ),
 			'index' => $index++,
 		);
 	}
 
-	/* Tri stable par rang de groupe, puis par ordre d'ajout. */
+	/* Tri stable par rang de groupe, puis alphabétique, puis par ordre d'ajout. */
 	uksort( $cart->cart_contents, function ( $a, $b ) use ( $positions ) {
 		$diff = $positions[ $a ]['group'] - $positions[ $b ]['group'];
 		if ( 0 !== $diff ) {
 			return $diff;
+		}
+		$cmp = strnatcasecmp( $positions[ $a ]['name'], $positions[ $b ]['name'] );
+		if ( 0 !== $cmp ) {
+			return $cmp;
 		}
 		return $positions[ $a ]['index'] - $positions[ $b ]['index'];
 	} );
