@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      - dependency-name: actions/attest-build-provenance
+      - dependency-name: actions/checkout
+      - dependency-name: actions/download-artifact
+      - dependency-name: actions/setup-node
+      - dependency-name: actions/upload-artifact
+      - dependency-name: github/codeql-action
+      - dependency-name: ossf/scorecard-action
+      - dependency-name: shivammathur/setup-php
