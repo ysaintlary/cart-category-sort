@@ -1,4 +1,3 @@
-* text=auto eol=lf
 /.github export-ignore
 /.wp-plugin-base export-ignore
 /.wp-plugin-base.env export-ignore
