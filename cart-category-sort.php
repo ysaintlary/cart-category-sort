@@ -3,7 +3,7 @@
  * Plugin Name:       Cart Category Sort
  * Plugin URI:        https://github.com/ysaintlary/cart-category-sort
  * Description:       Trie les lignes du panier WooCommerce selon un ordre fixe de groupes définis par catégorie ou par produit.
- * Version:           1.0.0
+ * Version: 1.0.1
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Author:            Yves Saint-Lary
