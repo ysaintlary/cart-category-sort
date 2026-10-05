@@ -42,7 +42,6 @@ jobs:
 
       - name: Read project runtime config
         id: runtime
-        shell: bash
         run: bash .wp-plugin-base/scripts/ci/write_config_outputs.sh project ".wp-plugin-base.env" "$GITHUB_OUTPUT"
 
       - name: Set up PHP
