@@ -35,6 +35,10 @@ To customise the groups, use the `ccs_sort_groups` filter in your theme or a cus
 
 == Changelog ==
 
+= 1.2.0 =
+* Fix - fix: bump minimum PHP version to 8.0 for foundation v1.10.0 compatibility.
+
+
 = 1.1.0 =
 * Feature - Tri alphabétique des produits au sein de chaque groupe.
 
