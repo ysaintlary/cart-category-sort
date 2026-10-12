@@ -2,12 +2,12 @@
   "schema_version": 1,
   "profile": "managed",
   "files": {
-    ".github/dependabot.yml": "bb675720b871850d81d2da46cc463df7a3a1c7001005818ac0cf2e403868f56e",
-    ".github/workflows/ci.yml": "b04000ec066e607457aed57d3e22e380a862d7587349bc60b05252d569b11e0f",
-    ".github/workflows/finalize-release.yml": "5711eb45b6fe04a94ed2ad3607d7f933104335126c56cea580c46a12edbf1f1d",
-    ".github/workflows/prepare-release.yml": "a819ac953ec4d895af1451ce1de75cdf406a494c5ceabd5918967908457e31d3",
-    ".github/workflows/publish-tag-release.yml": "2a08a0896bfbb6536a9a8d694ec5593331d6e9c2df779b8f78158ae0edb2a86d",
-    ".github/workflows/release.yml": "a828ce2a8dce12406c2b67d659a80e7b776ba4583f5b2d980b930bdaa9d4b4c2",
-    ".github/workflows/update-foundation.yml": "f494b3e83f481b0a1a271548c822e08c3df2b199aaa8f56f3f6409eea769cc3c"
+    ".github/dependabot.yml": "3a7e49f9443f19726e46630f1d082314b4b324c77c410a5b99dcc0063d36c253",
+    ".github/workflows/ci.yml": "425cc42bffe7c395eefcd0576963e886b07b7327dd42c9d2a2ed56ee035a10be",
+    ".github/workflows/finalize-release.yml": "5d8e5e381d4bab63beb50ae9faa7834df254e1657792f193d1ae7b640fd99310",
+    ".github/workflows/prepare-release.yml": "4dc26704817250c2386a1ddf3c2fb33c77f808515470dd9c29be0c18c58ddcdd",
+    ".github/workflows/publish-tag-release.yml": "d9fdd80a995271ff0f1d0abddfa142711dcc83b49813c29e43d35a69d64ef4b4",
+    ".github/workflows/release.yml": "a052eacf5b56837129967bed561ac390d0fbc4cc902ea80aae363eb0631ef3c2",
+    ".github/workflows/update-foundation.yml": "44dc1332953a094aef8662c885ac9ec299ad5a944a1f488a3ea5a62a48ae3fef"
   }
 }
