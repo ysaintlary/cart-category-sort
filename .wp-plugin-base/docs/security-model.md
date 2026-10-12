@@ -85,6 +85,7 @@ The hardened baseline audits literal workflow and repo-local-script references t
 - `woocommerce.com`
 - `auth.docker.io`
 - `registry-1.docker.io`
+- `registry.npmjs.org` (integrity-locked npm tooling bootstrap and dependency audits)
 - `token.actions.githubusercontent.com`
 - `accounts.google.com` (Cosign publisher certificate issuer)
 
@@ -130,13 +131,13 @@ Before `update-foundation` opens a PR, it verifies:
 - the release author is on the allowed author list
 - the vendored refresh is performed from the verified commit SHA, not by re-resolving the tag later
 
-For GitHub-hosted releases, consumers can also verify a released plugin ZIP independently after downloading it from the authoritative release host:
+For GitHub-hosted releases with `GITHUB_ARTIFACT_ATTESTATIONS_ENABLED=true`, consumers can also verify a released plugin ZIP independently after downloading it from the authoritative release host:
 
 ```bash
 gh attestation verify --owner <github-owner> path/to/plugin.zip
 ```
 
-That verifies the GitHub build attestation attached to the published release artifact without relying on local trust in the release notes alone. GitLab downstreams still rely on the Sigstore bundle and release metadata verification path documented below.
+That verifies the GitHub build attestation attached to the published release artifact without relying on local trust in the release notes alone. GitHub projects with attestations disabled and GitLab downstreams use the required Sigstore bundle verification path documented below. Disabling plugin attestations does not change foundation source verification.
 
 Release workflows now also attach a CycloneDX SBOM for the packaged artifact contents and a Sigstore keyless bundle for the released blob. Those cover different trust questions:
 
@@ -255,3 +256,12 @@ reviewed scalar values. Custom scripts and comments are preserved. See the
 first-upgrade requirements.
 
 The real WordPress browser fixture may contact its disposable localhost server from `scripts/foundation/test_runtime_packs_wordpress.sh`. The workflow host audit scopes that exception to this exact test entrypoint; it does not allow local/private production endpoints or private hosts in project configuration.
+
+## Explicit npm backports
+
+Projects that need a maintained npm security backport can use the finite,
+integrity-bound foundation catalog and a hash-bound application manifest. The
+security pack verifies installed bytes and the full advisory graph without
+mutating packages or changing severity policy. See
+[npm security remediations](npm-security-remediations.md) for installation,
+qualification, unsupported layouts and removal requirements.

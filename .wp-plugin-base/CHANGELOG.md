@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.10.8
+
+* Add an explicit GitHub plugin attestation setting for private repositories without Enterprise Cloud. The default remains enabled.
+* Preserve mandatory package signing, signing identity verification, SBOMs, immutable payload checks, and foundation source provenance across all release paths.
+* Test configuration validation and release workflow boundaries, and document historical-tag recovery behavior.
+
+## v1.10.7
+
+* Qualify WordPress tooling in an isolated staging directory before atomic activation. Reject unknown dependency versions, source drift and linked inputs; accept exact previously adapted bytes idempotently without changing the existing compatibility transformation. Preserve existing installations and test failed preparation, activation conflicts and actual Git operations.
+* Publish the previously merged Markdown tooling qualification: apply the existing reviewed braces backport before wrapper activation, retain failed-install recovery, and update compatible smol-toml to 1.9.0. Keep published releases immutable and require explicit upstream-fix retirement review.
+* Keep audit producer major upgrades gated on runtime and evidence requalification while retaining patch/minor monitoring and unchanged audit thresholds.
+
+## v1.10.6
+
+* Acquire remediation audit evidence through integrity-locked official npm Arborist and report APIs. Complete advisory graphs no longer depend on the ambient npm CLI version; the existing strict classifier, raw findings and configured thresholds remain unchanged.
+* Isolate audit tooling and cache, verify its complete installed file inventory before loading code, and retain the Node 22 runtime floor. Qualify both real consumer graphs, hostile configuration, producer drift and unsupported links; monitor the public tool lock with Dependabot.
+
+## v1.10.5
+
+* Bind npm patch preflight and application to the verified project work tree. Nested admin projects inside Git checkouts no longer silently skip patch paths; exact installed-byte verification remains mandatory.
+* Remove inherited Git environment variables case-insensitively, including Windows spellings. Qualify real linked-worktree, nested-project and standalone installs, hostile Git context, and idempotent application without changing catalog artifacts, package versions or audit policy.
+
+## v1.10.4
+
+* Add an explicit, integrity-bound npm backport catalog with one canonical installer and a separate read-only audit verifier. Verify all physical package copies, exact source/lock bytes and security regressions before qualifying an advisory.
+* Qualify the reviewed braces 3.0.3 depth-limit backport without changing package versions or audit thresholds. Preserve raw findings and compute residual advisory severity from complete verified dependency paths; unrelated findings and malformed reports fail closed.
+* Integrate opt-in, hash-bound application manifests with the security pack and required full-suite regression coverage, including hostile npm configuration, mixed advisories and hidden package rejection.
+* Refresh compatible PHPStan 2.2.17, PHPUnit 9.6.38 and basic-starter source-map-js 1.2.2 lock records while retaining existing runtime requirements.
+
+## v1.10.3
+
+* Match the WordPress Abilities API nullable registration contract while preserving failure diagnostics and static-analysis compatibility.
+* Refresh compatible admin starter lock entries for patched shell-quote 1.12.0 and source-map-js 1.2.2 without changing starter runtime package majors.
+* Verify Syft publisher Sigstore bundles against the exact trusted release workflow and issuer; reject missing signatures and mismatched checksums before changing tool pins.
+* Restore secure isolated WordPress Git tooling while retaining its Node 22-compatible environment. Adapt the two upstream imports only after exact source/version checks, with real clone/fetch/checkout and drift-rejection coverage.
+* Align React, TypeScript and Python update policies with their supported runtimes. Refresh hash-locked Python tooling and qualify the pinned Semgrep scanner against all production permission rules and safe controls in required CI.
+
 ## v1.10.2
 
 * Preserve pinned WordPress tooling alongside trusted release helpers in plugin, prerelease and foundation release workflows. Detached release drivers can now install their isolated WordPress environment after the original checkout is replaced or removed.
