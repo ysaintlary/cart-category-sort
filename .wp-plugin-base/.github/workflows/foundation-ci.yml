@@ -38,14 +38,14 @@ jobs:
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php-version }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install native Subversion test tools
         run: sudo apt-get update && sudo apt-get install -y subversion
@@ -95,14 +95,14 @@ jobs:
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: '8.2'
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install native Subversion test tools
         run: sudo apt-get update && sudo apt-get install -y subversion
@@ -139,20 +139,28 @@ jobs:
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php-version }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install foundation assurance tools
         run: |
           bash scripts/ci/install_lint_tools.sh "$RUNNER_TEMP/wp-plugin-base-tools"
           bash scripts/release/install_release_security_tools.sh "$RUNNER_TEMP/wp-plugin-base-tools"
           echo "$RUNNER_TEMP/wp-plugin-base-tools" >> "$GITHUB_PATH"
+
+      - name: Qualify pinned security scanner against production rules
+        env:
+          SEMGREP_SEND_METRICS: 'off'
+          SEMGREP_ENABLE_VERSION_CHECK: '0'
+        run: |
+          bash scripts/ci/install_lint_tools.sh "$RUNNER_TEMP/wp-plugin-base-tools" semgrep
+          semgrep --test --config scripts/ci/semgrep-rules/ tests/fixtures/semgrep/
 
       - name: Validate full foundation
         env:
@@ -169,25 +177,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Node.js 22 stays supported for projects; the oldest WordPress entry
+        # keeps the real wp-env Docker runtime qualified on it.
         include:
-          - {core: '7.1.2', php: '8.2'}
-          - {core: '7.1.2', php: '8.3'}
-          - {core: '7.1.2', php: '8.4'}
-          - {core: '7.1.2', php: '8.5'}
-          - {core: '6.9', php: '8.3'}
+          - {core: '7.1.2', php: '8.2', node: '24'}
+          - {core: '7.1.2', php: '8.3', node: '24'}
+          - {core: '7.1.2', php: '8.4', node: '24'}
+          - {core: '7.1.2', php: '8.5', node: '24'}
+          - {core: '6.9', php: '8.3', node: '22'}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: ${{ matrix.php }}
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node }}
       - name: Run language and real WordPress contracts
         env:
           WP_PLUGIN_BASE_TEST_WP_CORE: WordPress/WordPress#${{ matrix.core }}
@@ -213,14 +223,14 @@ jobs:
           persist-credentials: false
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: '8.2'
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install release security tools
         run: |

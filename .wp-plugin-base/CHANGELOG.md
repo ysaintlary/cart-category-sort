@@ -1,5 +1,83 @@
 # Changelog
 
+## v1.10.14
+
+* Keep remediation provenance public by removing unused internal origin attribution. Public upstream references, patch/regression bytes, complete package inventories and every integrity digest remain unchanged.
+* Resolve compatible development dependency advisories in the WordPress environment tool, both admin starters and the application fixture. Pair Puppeteer/browser helpers with their supported Zod API and preserve Node support, direct WordPress/React pins and audit thresholds. Existing projects adopt these fixes in their own manifests and lockfiles; sync preserves those files.
+
+## v1.10.13
+
+* Update the managed WordPress environment tooling to `@wordpress/env` 11.17.0 without raising the Node.js floor. Its Playground runtime packages declare Node.js 24.18 but are loaded only for `wp-env --runtime=playground`, which the foundation never uses. npm's whole-tree `engine-strict` is replaced by an explicit check of the tool manifest's engines and every package the Docker runtime loads. The redundant `adm-zip`, `ajv` and `tmp` overrides are removed.
+* New projects default to `NODE_VERSION=24`, and foundation CI runs on Node.js 24. Node.js 22 remains supported and qualified with a real WordPress environment; existing projects keep their configured runtime and need no change.
+
+## v1.10.12
+
+* Read workflow sources as UTF-8 when rewriting action pins, so sync migration and the managed-workflow pin check keep working under a C/POSIX locale (minimal runner images, GitLab runners without `LANG`) when non-ASCII text precedes a `uses:` reference.
+
+## v1.10.11
+
+* Let projects apply their own dependency updates without breaking validation, Plugin Check, packaging or release. Project validation accepts any full-SHA action pin, including a Dependabot update in a managed workflow; every other managed-workflow edit still fails. Sync keeps project pins on every later sync, upgrades reviewed predecessors and never downgrades. The foundation's own workflow audit still requires reviewed pins.
+* Generated child Dependabot configuration no longer ignores actions, so action version and security updates reach every workflow. Earlier vendored templates still render their original bytes during ownership recovery.
+* Bind npm remediations to each installed package copy instead of whole `package.json`/`package-lock.json` digests, so project dependency updates keep the reviewed `braces` backport valid. Existing manifests with digests keep working. Other versions or removed packages are left to npm audit, and an advisory is waived only when every affected copy is verified. The managed admin build applies the backport, and both starters seed it, so new admin UI projects pass the security pack audit.
+* Report advisories in the foundation-owned quality and security pack tool locks as warnings in projects instead of failing their CI; foundation validation still blocks on them.
+* Resolve the critical `certifi` advisory (GHSA-6q48-6c7w-9gw2) in the Semgrep tooling, and the `follow-redirects`, `launch-editor` and `markdown-it` advisories in both admin starters, within their existing ranges. Starters are child-owned: existing projects receive these through their own Dependabot.
+* Update signature-verified Cosign 3.1.4.
+
+## v1.10.10
+
+* Override `markdown-it` to 15.0.3 in the Markdown tool bundle for GHSA-r7fv-28h4-cvq7; markdownlint-cli2 0.23.3 pins the affected 15.0.1 exactly. The foundation configures no markdown-it custom rules, and 15.0.3 also carries the quadratic reference-definition and inline HTML parsing fixes. Remediation digests are renewed; the admin starters and fixture already resolve the patched 14.3.2.
+* Update signature-verified Syft 1.55.0, which remediates five `golang.org/x/net` advisories including one critical. CycloneDX SBOM output is unchanged.
+* Group `@wordpress/*` updates (`wordpress-packages`) in every generated child Dependabot npm entry, root and admin UI, so shared WordPress package releases arrive as one proposal per directory. Existing children receive the group on their next foundation sync, including children upgrading from v1.9.x without an ownership receipt: earlier vendored templates still render their original bytes during ownership recovery.
+* Fail closed when a child Dependabot template contains unsupported additions or renders output that does not match the selected update policies.
+
+## v1.10.9
+
+* Resolve nine compatible npm advisories in both admin starters and the existing-application fixture with narrow overrides: `postcss-selector-parser` 7.1.6, `js-yaml@^5.0.0` 5.4.1, `smol-toml` 1.9.0 and `katex` 0.18.10. The Markdown tool bundle adopts the same KaTeX release with renewed remediation digests; starter production builds are byte-identical.
+* Update both admin starters to the October 2026 WordPress package set: `@wordpress/components` 42, `@wordpress/element` 9, `@wordpress/dataviews` 20 and `@wordpress/scripts` 36.1, with matching api-fetch, data and i18n releases. React and React DOM remain 18.3.1, and generated `index.asset.php` dependency lists are unchanged.
+* DataViews 20 requires `@wordpress/dependency-extraction-webpack-plugin` 6.57 or newer, normally supplied by `@wordpress/scripts` 36.1. Older extraction emits a `wp-react-inert-value` handle that WordPress 7.1 does not register, so WordPress refuses to enqueue the admin script. Upgrade DataViews and scripts in one change, including in custom webpack setups.
+* Admin starter files are child-owned and sync does not update them. Existing children should copy the new package versions and overrides from the foundation seeds, remove any copied `typescript-eslint` 8.70.0 override, regenerate the lockfile, and rerun install, build and lint. Import DataViews styles through an entry-level stylesheet: a direct `@wordpress/dataviews/build-style/style.css` import becomes an unregistered script dependency.
+* Adopt reviewed GitHub Actions releases: setup-php 2.40.0, scorecard-action 2.5.0, download-artifact 8.0.2, setup-node 7.1.0, upload-artifact 7.0.2 and codeql-action/upload-sarif 4.39.0. Foundation sync migrates managed and child-owned workflows from the previous pins; the workflow audit rejects all other pins.
+* Update signature-verified Syft 1.54.1, the `composer:2` image digest, Semgrep 1.181.0, quality-pack PHPStan 2.3.1, and the locked npm audit producer `@npmcli/arborist` 9.9.3 with a renewed inventory digest. Audit thresholds, scanner rules and runtime requirements are unchanged.
+* Keep the WordPress environment tool's staging directory cleanup reliable under macOS bash 3.2, and require aligned overrides, `@wordpress/*` and React versions across the admin seeds and fixture, with grouped Dependabot updates for those packages.
+* Keep `@wordpress/env` at 11.16.0: 11.17.0 requires WordPress Playground releases that declare Node 24.18, above the supported Node 22 floor. Three advisories without an accepted fix remain documented with reachability and a 2026-11-19 review date: `mcp` (pinned by Semgrep, CLI-only use), `sprintf-js` (no patched release) and `braces` (remediated by the existing verified backport).
+
+## v1.10.8
+
+* Add an explicit GitHub plugin attestation setting for private repositories without Enterprise Cloud. The default remains enabled.
+* Preserve mandatory package signing, signing identity verification, SBOMs, immutable payload checks, and foundation source provenance across all release paths.
+* Test configuration validation and release workflow boundaries, and document historical-tag recovery behavior.
+
+## v1.10.7
+
+* Qualify WordPress tooling in an isolated staging directory before atomic activation. Reject unknown dependency versions, source drift and linked inputs; accept exact previously adapted bytes idempotently without changing the existing compatibility transformation. Preserve existing installations and test failed preparation, activation conflicts and actual Git operations.
+* Publish the previously merged Markdown tooling qualification: apply the existing reviewed braces backport before wrapper activation, retain failed-install recovery, and update compatible smol-toml to 1.9.0. Keep published releases immutable and require explicit upstream-fix retirement review.
+* Keep audit producer major upgrades gated on runtime and evidence requalification while retaining patch/minor monitoring and unchanged audit thresholds.
+
+## v1.10.6
+
+* Acquire remediation audit evidence through integrity-locked official npm Arborist and report APIs. Complete advisory graphs no longer depend on the ambient npm CLI version; the existing strict classifier, raw findings and configured thresholds remain unchanged.
+* Isolate audit tooling and cache, verify its complete installed file inventory before loading code, and retain the Node 22 runtime floor. Qualify both real consumer graphs, hostile configuration, producer drift and unsupported links; monitor the public tool lock with Dependabot.
+
+## v1.10.5
+
+* Bind npm patch preflight and application to the verified project work tree. Nested admin projects inside Git checkouts no longer silently skip patch paths; exact installed-byte verification remains mandatory.
+* Remove inherited Git environment variables case-insensitively, including Windows spellings. Qualify real linked-worktree, nested-project and standalone installs, hostile Git context, and idempotent application without changing catalog artifacts, package versions or audit policy.
+
+## v1.10.4
+
+* Add an explicit, integrity-bound npm backport catalog with one canonical installer and a separate read-only audit verifier. Verify all physical package copies, exact source/lock bytes and security regressions before qualifying an advisory.
+* Qualify the reviewed braces 3.0.3 depth-limit backport without changing package versions or audit thresholds. Preserve raw findings and compute residual advisory severity from complete verified dependency paths; unrelated findings and malformed reports fail closed.
+* Integrate opt-in, hash-bound application manifests with the security pack and required full-suite regression coverage, including hostile npm configuration, mixed advisories and hidden package rejection.
+* Refresh compatible PHPStan 2.2.17, PHPUnit 9.6.38 and basic-starter source-map-js 1.2.2 lock records while retaining existing runtime requirements.
+
+## v1.10.3
+
+* Match the WordPress Abilities API nullable registration contract while preserving failure diagnostics and static-analysis compatibility.
+* Refresh compatible admin starter lock entries for patched shell-quote 1.12.0 and source-map-js 1.2.2 without changing starter runtime package majors.
+* Verify Syft publisher Sigstore bundles against the exact trusted release workflow and issuer; reject missing signatures and mismatched checksums before changing tool pins.
+* Restore secure isolated WordPress Git tooling while retaining its Node 22-compatible environment. Adapt the two upstream imports only after exact source/version checks, with real clone/fetch/checkout and drift-rejection coverage.
+* Align React, TypeScript and Python update policies with their supported runtimes. Refresh hash-locked Python tooling and qualify the pinned Semgrep scanner against all production permission rules and safe controls in required CI.
+
 ## v1.10.2
 
 * Preserve pinned WordPress tooling alongside trusted release helpers in plugin, prerelease and foundation release workflows. Detached release drivers can now install their isolated WordPress environment after the original checkout is replaced or removed.

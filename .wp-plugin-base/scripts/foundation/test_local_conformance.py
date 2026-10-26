@@ -4,12 +4,20 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
 import unittest
 
 FOUNDATION = Path(__file__).resolve().parents[2]
+
+
+def yaml_updates(path):
+    script = "puts JSON.generate(Psych.safe_load(File.read(ARGV[0]), aliases: false).fetch('updates'))"
+    result = subprocess.run(["ruby", "-rpsych", "-rjson", "-e", script, str(path)],
+                            check=True, text=True, stdout=subprocess.PIPE)
+    return json.loads(result.stdout)
 
 
 class LocalConformance(unittest.TestCase):
@@ -107,6 +115,106 @@ class LocalConformance(unittest.TestCase):
         self.assertTrue(managed.exists())
         self.assertEqual(editor.read_text(), "application change sentinel\n")
 
+    def pin(self, path, action, commit):
+        text = path.read_text()
+        updated = re.sub(rf"(uses: {re.escape(action)})@[0-9a-f]{{40}}", rf"\g<1>@{commit}", text)
+        self.assertNotEqual(text, updated, f"{action} is not used in {path}")
+        path.write_text(updated)
+
+    def receipt(self):
+        return json.loads((self.root / ".wp-plugin-base-automation.json").read_text())
+
+    def catalog(self, action):
+        return json.loads((FOUNDATION / "scripts/lib/action-pins.json").read_text())["actions"][action]
+
+    def test_project_action_pin_updates_survive_validation_and_sync(self):
+        self.configure(AUTOMATION_PROFILE="managed")
+        self.run_script("update/sync_child_repo.sh")
+        ci = self.root / ".github/workflows/ci.yml"
+        # A Dependabot-style update to a commit the foundation has not reviewed.
+        self.pin(ci, "actions/checkout", "a" * 40)
+        updated = ci.read_bytes()
+        self.assertIn("keeps project-updated action pins: .github/workflows/ci.yml", self.run_script("ci/validate_project.sh"))
+        self.assertIn("Kept project action pins in .github/workflows/ci.yml", self.run_script("update/sync_child_repo.sh"))
+        self.assertEqual(updated, ci.read_bytes())
+        receipt = self.receipt()
+        self.assertEqual(receipt["files"][".github/workflows/ci.yml"], hashlib.sha256(updated).hexdigest())
+        self.assertEqual(set(receipt["pin_neutral"]), set(receipt["files"]))
+        self.assertNotIn("keeps project-updated", self.run_script("ci/validate_project.sh"))
+        # Later syncs, and the update workflow's capture followed by sync, keep it too.
+        self.run_script("update/sync_child_repo.sh")
+        self.assertEqual(updated, ci.read_bytes())
+        self.run_script("update/capture_automation_ownership.sh")
+        self.run_script("update/sync_child_repo.sh")
+        self.assertEqual(updated, ci.read_bytes())
+        # Every byte other than a full-SHA pin stays foundation-owned.
+        ci.write_bytes(updated + b"\n# custom step\n")
+        self.assertIn("differs from its synchronized receipt", self.run_script("ci/validate_project.sh", success=False))
+        self.assertIn("Managed automation was edited", self.run_script("update/sync_child_repo.sh", success=False))
+        ci.write_bytes(updated)
+        self.pin(ci, "actions/checkout", "a" * 39 + "g")
+        self.assertIn("differs from its synchronized receipt", self.run_script("ci/validate_project.sh", success=False))
+
+    def test_capture_then_sync_keeps_a_fresh_project_pin(self):
+        self.configure(AUTOMATION_PROFILE="managed")
+        self.run_script("update/sync_child_repo.sh")
+        ci = self.root / ".github/workflows/ci.yml"
+        self.pin(ci, "actions/checkout", "e" * 40)
+        updated = ci.read_bytes()
+        # update-foundation captures ownership before refreshing the vendor.
+        self.run_script("update/capture_automation_ownership.sh")
+        self.run_script("update/sync_child_repo.sh")
+        self.assertEqual(updated, ci.read_bytes())
+
+    def test_gitlab_template_changes_sync_without_action_references(self):
+        # .gitlab-ci.yml uses YAML anchors and has no action pins to keep.
+        self.configure(AUTOMATION_PROFILE="managed", AUTOMATION_PROVIDER="gitlab")
+        self.run_script("update/sync_child_repo.sh")
+        template = self.root / ".wp-plugin-base/templates/child/.gitlab-ci.yml"
+        template.write_text(template.read_text() + "# next foundation generation\n")
+        self.run_script("update/sync_child_repo.sh")
+        self.assertTrue((self.root / ".gitlab-ci.yml").read_text().endswith("# next foundation generation\n"))
+
+    def test_pin_updates_are_recognized_under_receipts_without_pin_digests(self):
+        self.configure(AUTOMATION_PROFILE="managed")
+        self.run_script("update/sync_child_repo.sh")
+        # Receipts written before pin-neutral digests only carry exact digests.
+        state = self.root / ".wp-plugin-base-automation.json"
+        receipt = self.receipt()
+        del receipt["pin_neutral"]
+        state.write_text(json.dumps(receipt, indent=2) + "\n")
+        ci = self.root / ".github/workflows/ci.yml"
+        self.pin(ci, "actions/checkout", "b" * 40)
+        updated = ci.read_bytes()
+        self.run_script("ci/validate_project.sh")
+        self.run_script("update/sync_child_repo.sh")
+        self.assertEqual(updated, ci.read_bytes())
+        self.assertIn(".github/workflows/ci.yml", self.receipt()["pin_neutral"])
+
+    def test_reviewed_older_pins_upgrade_and_project_workflows_keep_their_pins(self):
+        self.configure(AUTOMATION_PROFILE="managed")
+        self.run_script("update/sync_child_repo.sh")
+        ci = self.root / ".github/workflows/ci.yml"
+        synchronized = ci.read_bytes()
+        checkout = self.catalog("actions/checkout")
+        self.pin(ci, "actions/checkout", checkout["predecessors"][0])
+        self.run_script("ci/validate_project.sh")
+        custom = self.root / ".github/workflows/application.yml"
+        custom.write_text("name: Application\npermissions: {contents: read}\non: workflow_dispatch\njobs:\n  build:\n"
+                          "    runs-on: ubuntu-latest\n    steps:\n"
+                          f"      - uses: actions/checkout@{'c' * 40}\n"
+                          f"      - uses: example/unreviewed-action@{'d' * 40}\n")
+        application = custom.read_bytes()
+        output = self.run_script("ci/validate_project.sh")
+        self.assertIn(f"Project-owned action pin (not the current wp-plugin-base reviewed pin): example/unreviewed-action@{'d' * 40}", output)
+        self.run_script("update/sync_child_repo.sh")
+        # A reviewed predecessor is older than the rendered pin; never downgrade
+        # anything else.
+        self.assertEqual(synchronized, ci.read_bytes())
+        self.assertEqual(application, custom.read_bytes())
+        custom.write_text(custom.read_text().replace(f"actions/checkout@{'c' * 40}", "actions/checkout@v4"))
+        self.assertIn("must be pinned to a full-length commit SHA", self.run_script("ci/validate_project.sh", success=False))
+
     def test_initial_local_preserves_unknown_same_name(self):
         custom = self.root / ".github/workflows/release.yml"
         custom.parent.mkdir(parents=True)
@@ -140,20 +248,35 @@ class LocalConformance(unittest.TestCase):
 
     def test_first_upgrade_uses_committed_previous_templates(self):
         self.configure(AUTOMATION_PROFILE="managed", FOUNDATION_VERSION="v1.9.0")
+        # A root package adds an npm Dependabot entry, whose current generation
+        # differs from the previous one; recovery must still reproduce the old bytes.
+        (self.root / "package.json").write_text("{}\n")
         templates = self.root / ".wp-plugin-base/templates"
         legacy = json.loads((FOUNDATION / "tests/fixtures/legacy-automation-templates.json").read_text())
+        # The fixture stays byte-exact to its source commit. This setup renders it with
+        # current scripts, whose sync migrates predecessor pins in rendered output and
+        # would break the old generation's digest match, so advance predecessors first.
+        pins = json.loads((FOUNDATION / "scripts/lib/action-pins.json").read_text())["actions"]
         for name, content in legacy["templates"].items():
+            for action, policy in pins.items():
+                for predecessor in policy["predecessors"]:
+                    content = content.replace(f"{action}@{predecessor}", f"{action}@{policy['current']}")
             target = templates / "child" / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
         self.run_script("update/sync_child_repo.sh")
+        # Earlier renderers emitted catalog action ignores and no npm groups; the
+        # previous template generation must still render those exact bytes.
+        previous_updates = yaml_updates(self.root / ".github/dependabot.yml")
+        self.assertTrue(all("groups" not in update for update in previous_updates))
+        self.assertIn({"dependency-name": "actions/checkout"}, previous_updates[0]["ignore"])
         (self.root / ".wp-plugin-base-automation.json").unlink()
         old_workflow_bytes = (self.root / ".github/workflows/release.yml").read_bytes()
         self.run_script("update/capture_automation_ownership.sh")
         self.run_script("ci/validate_project.sh")
         self.assertEqual(old_workflow_bytes, (self.root / ".github/workflows/release.yml").read_bytes())
         (self.root / ".wp-plugin-base-automation.json").unlink()
-        subprocess.run(["git", "-C", str(self.root), "add", "-f", ".wp-plugin-base/templates", ".wp-plugin-base.env", ".github"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "add", "-f", ".wp-plugin-base/templates", ".wp-plugin-base.env", ".github", "package.json"], check=True)
         subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "Record previous published template generation"], check=True)
         shutil.rmtree(templates)
         shutil.copytree(FOUNDATION / "templates", templates)
@@ -169,6 +292,10 @@ class LocalConformance(unittest.TestCase):
         self.assertEqual(json.loads((self.root / ".wp-plugin-base-automation.json").read_text())["profile"], "managed")
         self.assertIn("v1.9.1", (self.root / "CONTRIBUTING.md").read_text())
         self.assertIn("steps.package.outputs.zip_path", (self.root / ".github/workflows/ci.yml").read_text())
+        updates = {update["package-ecosystem"]: update for update in yaml_updates(self.root / ".github/dependabot.yml")}
+        self.assertEqual(updates["npm"]["groups"], {"wordpress-packages": {"patterns": ["@wordpress/*"]}})
+        self.assertNotIn("groups", updates["github-actions"])
+        self.assertNotIn("ignore", updates["github-actions"])
 
     def v183_fixture(self, *, commit=False, qit=False):
         fixture = json.loads((FOUNDATION / "tests/fixtures/legacy-v183-automation.json").read_text())
@@ -228,7 +355,8 @@ class LocalConformance(unittest.TestCase):
         self.run_script("update/sync_child_repo.sh")
         receipt = json.loads((self.root / ".wp-plugin-base-automation.json").read_text())
         self.assertEqual(receipt["profile"], "managed")
-        self.assertIn("dependency-name: actions/checkout", (self.root / ".github/dependabot.yml").read_text())
+        # The current generation leaves every action update to the project.
+        self.assertNotIn("ignore:", (self.root / ".github/dependabot.yml").read_text())
         self.assertIn('environment: "production"', (self.root / ".github/workflows/finalize-release.yml").read_text())
         self.assertNotIn(".github/workflows/application.yml", receipt["files"])
         self.assertEqual((self.root / ".github/workflows/application.yml").read_text(), "name: Application\non: workflow_dispatch\njobs: {}\n")
@@ -239,7 +367,8 @@ class LocalConformance(unittest.TestCase):
         self.run_script("update/sync_child_repo.sh")
         receipt = json.loads((self.root / ".wp-plugin-base-automation.json").read_text())
         self.assertEqual(receipt["profile"], "managed")
-        self.assertIn("dependency-name: actions/checkout", (self.root / ".github/dependabot.yml").read_text())
+        # The current generation leaves every action update to the project.
+        self.assertNotIn("ignore:", (self.root / ".github/dependabot.yml").read_text())
         self.assertIn('environment: "production"', (self.root / ".github/workflows/finalize-release.yml").read_text())
         self.assertNotIn(".github/workflows/application.yml", receipt["files"])
         self.assertEqual((self.root / ".github/workflows/application.yml").read_text(), "name: Application\non: workflow_dispatch\njobs: {}\n")
