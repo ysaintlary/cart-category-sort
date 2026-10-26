@@ -21,6 +21,16 @@
       "lockfile": "tools/wordpress-env/package-lock.json"
     },
     {
+      "id": "npm-audit-producer-tooling",
+      "tier": "lockfile-backed",
+      "update": {
+        "kind": "dependabot",
+        "ecosystem": "npm",
+        "directory": "/tools/npm-audit"
+      },
+      "lockfile": "tools/npm-audit/package-lock.json"
+    },
+    {
       "id": "admin-ui-basic-starter-tooling",
       "tier": "lockfile-backed",
       "update": {
@@ -49,6 +59,16 @@
         "directory": "/tests/fixtures/existing-application"
       },
       "lockfile": "tests/fixtures/existing-application/package-lock.json"
+    },
+    {
+      "id": "npm-remediation-regression-fixture",
+      "tier": "lockfile-backed",
+      "update": {
+        "kind": "dependabot",
+        "ecosystem": "npm",
+        "directory": "/tests/fixtures/npm-remediation"
+      },
+      "lockfile": "tests/fixtures/npm-remediation/package-lock.json"
     },
     {
       "id": "markdownlint-tooling",
@@ -133,7 +153,7 @@
       },
       "pin": {
         "file": "scripts/lib/wordpress_tooling.sh",
-        "pattern": "WP_PLUGIN_BASE_COMPOSER_IMAGE='composer@sha256:9715c7f69044da2a212a5fbde29ee7da24e364d426560ae6367b060236f847d7'"
+        "pattern": "WP_PLUGIN_BASE_COMPOSER_IMAGE='composer@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac'"
       }
     },
     {
@@ -193,7 +213,7 @@
       },
       "pin": {
         "file": "scripts/release/install_release_security_tools.sh",
-        "pattern": "SYFT_VERSION='1.52.0'"
+        "pattern": "SYFT_VERSION='1.55.0'"
       }
     },
     {
@@ -205,7 +225,7 @@
       },
       "pin": {
         "file": "scripts/release/install_release_security_tools.sh",
-        "pattern": "COSIGN_VERSION='3.1.3'"
+        "pattern": "COSIGN_VERSION='3.1.4'"
       }
     }
   ]
