@@ -1,0 +1,15 @@
+{
+  "name": "wp-plugin-base-npm-audit-tools",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.2.3"
+  },
+  "devDependencies": {
+    "@npmcli/arborist": "9.9.3",
+    "npm-audit-report": "7.0.0"
+  },
+  "auditProducer": {
+    "treeSha256": "55912b50ebf83eb80254d59c9d8cdc05571622a5afe98d47a7edfd5e5949c1a9"
+  }
+}

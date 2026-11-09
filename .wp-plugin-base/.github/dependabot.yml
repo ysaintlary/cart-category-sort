@@ -18,6 +18,25 @@ updates:
       include: scope
   - package-ecosystem: npm
     directory: /templates/child/admin-ui-pack-seed-basic/.wp-plugin-base-admin-ui
+    # WordPress 6.9 and 7.1 supply React 18.3.1; review runtime compatibility first.
+    ignore:
+      - dependency-name: "react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "react-dom"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react-dom"
+        update-types:
+          - version-update:semver-major
+    # Shared @wordpress/* packages are qualified together; keep them in one update.
+    groups:
+      wordpress-packages:
+        patterns:
+          - "@wordpress/*"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -26,6 +45,25 @@ updates:
       include: scope
   - package-ecosystem: npm
     directory: /templates/child/admin-ui-pack-seed-dataviews/.wp-plugin-base-admin-ui
+    # WordPress 6.9 and 7.1 supply React 18.3.1; review runtime compatibility first.
+    ignore:
+      - dependency-name: "react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "react-dom"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react-dom"
+        update-types:
+          - version-update:semver-major
+    # Shared @wordpress/* packages are qualified together; keep them in one update.
+    groups:
+      wordpress-packages:
+        patterns:
+          - "@wordpress/*"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -34,6 +72,29 @@ updates:
       include: scope
   - package-ecosystem: npm
     directory: /tests/fixtures/existing-application
+    # WordPress 6.9 and 7.1 supply React 18.3.1; review runtime compatibility first.
+    ignore:
+      - dependency-name: "react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "react-dom"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/react-dom"
+        update-types:
+          - version-update:semver-major
+      # typescript-eslint 8.72 supports TypeScript >=4.8.4 <6.1.0.
+      - dependency-name: "typescript"
+        update-types:
+          - version-update:semver-major
+    # Shared @wordpress/* packages are qualified together; keep them in one update.
+    groups:
+      wordpress-packages:
+        patterns:
+          - "@wordpress/*"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -58,6 +119,11 @@ updates:
       include: scope
   - package-ecosystem: pip
     directory: /tools/python-semgrep
+    # Calendar-version rpds-py releases drop the supported Python 3.10 floor.
+    ignore:
+      - dependency-name: rpds-py
+        versions:
+          - ">=2026"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -80,6 +146,28 @@ updates:
     directory: /templates/child/security-pack/.wp-plugin-base-security-pack
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: npm
+    directory: /tests/fixtures/npm-remediation
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: npm
+    directory: /tools/npm-audit
+    schedule:
+      interval: weekly
+    # Major API upgrades require renewed Node-floor and evidence qualification.
+    ignore:
+      - dependency-name: '@npmcli/arborist'
+        update-types: ['version-update:semver-major']
+      - dependency-name: npm-audit-report
+        update-types: ['version-update:semver-major']
     open-pull-requests-limit: 10
     commit-message:
       prefix: chore
