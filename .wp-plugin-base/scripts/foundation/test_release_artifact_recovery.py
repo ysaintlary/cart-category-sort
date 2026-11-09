@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -288,6 +289,17 @@ pathlib.Path(os.environ['FIXTURE_MUTATION']).write_text(' '.join(sys.argv[1:]))
                         'test -f .npmrc && test -f package.json && test -f package-lock.json\n'
                         'touch npm-installed\n')
         npm.chmod(0o755)
+        node = self.bin / 'node'
+        node.write_text('#!/usr/bin/env bash\nset -eu\n'
+                        f'if [ "$1" = - ]; then exec {shlex.quote(shutil.which("node"))} "$@"; fi\n'
+                        'test -f "$1" && test -f "$2/npm-installed"\n'
+                        # The engine check must run before the compatibility patch.
+                        'case "${1##*/}" in\n'
+                        '  check_wordpress_env_engines.cjs) touch "$2/engines-checked" ;;\n'
+                        '  patch_wordpress_env_git.cjs) test -f "$2/engines-checked" && touch "$2/compatibility-patched" ;;\n'
+                        '  *) exit 1 ;;\n'
+                        'esac\n')
+        node.chmod(0o755)
         for index, workflow in enumerate(workflows):
             with self.subTest(workflow=workflow):
                 workspace = self.directory / f'workspace-{index}'
@@ -323,9 +335,68 @@ pathlib.Path(os.environ['FIXTURE_MUTATION']).write_text(' '.join(sys.argv[1:]))
                     cwd=workspace, env=environment, capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue((destination / 'npm-installed').is_file())
+                self.assertTrue((destination / 'engines-checked').is_file())
+                self.assertTrue((destination / 'compatibility-patched').is_file())
                 for name in ('.npmrc', 'package.json', 'package-lock.json'):
                     self.assertEqual((destination / name).read_bytes(),
                                       (ROOT / 'tools/wordpress-env' / name).read_bytes())
+
+    def test_installer_propagates_engine_and_patch_rejection_in_conditional(self):
+        # Either qualification step rejecting the staged tool aborts activation.
+        for rejected in ('check_wordpress_env_engines.cjs', 'patch_wordpress_env_git.cjs'):
+            with self.subTest(rejected=rejected):
+                destination = self.directory / f'rejected-{rejected}'
+                destination.mkdir()
+                node_body = f'touch "$2/partially-adapted"; [ "${{1##*/}}" != {rejected} ] || exit 42'
+                for name, body in [('npm', 'exit 0'), ('node', node_body)]:
+                    stub = self.bin / name
+                    stub.write_text('#!/usr/bin/env bash\n' + body + '\n')
+                    stub.chmod(0o755)
+                result = subprocess.run([
+                    'bash', '-c', 'source "$1/scripts/lib/wordpress_tooling.sh"; '
+                    'if wp_plugin_base_install_wordpress_env "$2"; then exit 99; '
+                    'else exit "$?"; fi', '_', str(ROOT), str(destination)],
+                    cwd=self.project, env=self.environment, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 42, result.stderr)
+                self.assertEqual(list(destination.iterdir()), [])
+                self.assertEqual(list(destination.parent.glob(destination.name + '.staging.*')), [])
+
+    def test_installer_preserves_existing_tools_without_invoking_npm(self):
+        destination = self.directory / 'existing-tools'
+        destination.mkdir()
+        (destination / 'working-tool').write_text('previous verified installation')
+        npm = self.bin / 'npm'
+        npm.write_text('#!/usr/bin/env bash\ntouch "$FIXTURE_MUTATION"\nexit 0\n')
+        npm.chmod(0o755)
+        result = subprocess.run([
+            'bash', '-c', 'source "$1/scripts/lib/wordpress_tooling.sh"; '
+            'wp_plugin_base_install_wordpress_env "$2"', '_', str(ROOT), str(destination)],
+            cwd=self.project, env=self.environment, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('private empty physical directory', result.stderr)
+        self.assertEqual((destination / 'working-tool').read_text(), 'previous verified installation')
+        self.assertFalse((self.directory / 'mutation').exists())
+
+    def test_activation_rejects_populated_target_without_nesting_candidate(self):
+        destination = self.directory / 'activation-target'
+        destination.mkdir()
+        npm = self.bin / 'npm'
+        npm.write_text('#!/usr/bin/env bash\ntouch candidate-installed\n')
+        npm.chmod(0o755)
+        node = self.bin / 'node'
+        node.write_text('#!/usr/bin/env bash\nset -eu\n'
+                        f'if [ "$1" = - ]; then exec {shlex.quote(shutil.which("node"))} "$@"; fi\n'
+                        'touch "$FIXTURE_TARGET/keep-existing"\n')
+        node.chmod(0o755)
+        result = subprocess.run([
+            'bash', '-c', 'source "$1/scripts/lib/wordpress_tooling.sh"; '
+            'wp_plugin_base_install_wordpress_env "$2"', '_', str(ROOT), str(destination)],
+            cwd=self.project, env=dict(self.environment, FIXTURE_TARGET=str(destination)),
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('original empty directory', result.stderr)
+        self.assertEqual([path.name for path in destination.iterdir()], ['keep-existing'])
+        self.assertEqual(list(destination.parent.glob(destination.name + '.staging.*')), [])
 
     def test_missing_driver_tooling_fails_before_copy_or_npm_in_conditional(self):
         driver = self.directory / 'incomplete-driver'

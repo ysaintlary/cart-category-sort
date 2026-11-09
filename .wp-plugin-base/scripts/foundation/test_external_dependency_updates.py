@@ -51,22 +51,29 @@ if any('Bearer fixture' in arg for arg in args):
 for key in ('-fsSLo','-o'):
     if key in args: output=args[args.index(key)+1]
 if os.environ.get('FAIL_DOWNLOAD') == 'true': sys.exit(1)
+if os.environ.get('FAIL_BUNDLE') == 'true' and url.endswith('.sigstore.json'): sys.exit(22)
 version=os.environ['CANDIDATE_VERSION']
 if 'api.github.com' in url:
     data=json.dumps([{'tag_name': ('v' if 'plugin-check/' not in url else '')+version,'draft':False,'prerelease':False,'author':{'login':'davidperezgar'},'published_at':'2020-01-01T00:00:00Z'}]).encode()
 elif 'auth.docker.io' in url: data=b'{"token":"fixture"}'
 elif 'registry-1.docker.io' in url: data=('docker-content-digest: sha256:'+'f'*64+'\\r\\n').encode()
 elif '/archive/' in url: data=pathlib.Path(os.environ['PUC_ARCHIVE']).read_bytes()
-elif url.endswith('.pem'): data=b'-----BEGIN CERTIFICATE-----\\nfixture\\n-----END CERTIFICATE-----'
+elif url.endswith(('.pem', '.sig')): raise SystemExit('Obsolete detached Syft signature requested')
 elif url.endswith('_checksums.txt'):
     import hashlib
     data=''.join(hashlib.sha256(asset.encode()).hexdigest()+'  '+asset+'\\n' for asset in ['syft_'+version+'_'+platform+'.tar.gz' for platform in ['linux_amd64','darwin_amd64','darwin_arm64']]).encode()
 else: data=url.rsplit('/',1)[-1].encode()
+if os.environ.get('BAD_CHECKSUM') == 'true' and url.endswith('_checksums.txt'): data=b'0'*64 + data[64:]
 if output: pathlib.Path(output).write_bytes(data)
 else: sys.stdout.buffer.write(data)
 ''')
         (self.bin / "curl").chmod(0o755)
-        (self.bin / "cosign").write_text('#!/usr/bin/env bash\n[[ "${FAIL_SIGNATURE:-false}" != true ]]\n')
+        (self.bin / "cosign").write_text('''#!/usr/bin/env python3
+import json, os, pathlib, sys
+pathlib.Path(os.environ['COSIGN_ARGUMENTS']).write_text(json.dumps(sys.argv[1:]))
+sys.exit(1 if os.environ.get('FAIL_SIGNATURE') == 'true' else 0)
+''')
+        self.env["COSIGN_ARGUMENTS"] = str(Path(self.temporary.name) / "cosign-arguments.json")
         (self.bin / "cosign").chmod(0o755)
         self.output = Path(self.temporary.name) / "outputs"
 
@@ -120,7 +127,7 @@ else: sys.stdout.buffer.write(data)
             shutil.copytree(ROOT / directory, foundation / directory)
         config_path = child / ".wp-plugin-base.env"
         with config_path.open("a") as config:
-            config.write("\nPHP_VERSION=8.3\nNODE_VERSION=24.15.0\n")
+            config.write("\nPHP_VERSION=8.3\nNODE_VERSION=24.22.1\n")
         env = dict(self.env, WP_PLUGIN_BASE_ROOT=str(child), GITHUB_OUTPUT=str(self.output))
         subprocess.run(["bash", str(foundation / "scripts/update/sync_child_repo.sh")], cwd=child, env=env, check=True, capture_output=True, text=True)
         subprocess.run(["git", "init", "-q"], cwd=child, check=True)
@@ -138,7 +145,7 @@ else: sys.stdout.buffer.write(data)
                     command = step["run"].replace("${{ inputs.config_path }}", ".wp-plugin-base.env")
                     subprocess.run(["bash", "-euo", "pipefail", "-c", command], cwd=child, env=env, check=True, capture_output=True, text=True)
                 values = candidate.read_outputs(self.output)
-                self.assertEqual(values["node_version"], "24.15.0")
+                self.assertEqual(values["node_version"], "24.22.1")
                 self.assertEqual(values["php_version"], "8.3")
                 self.output.unlink()
                 for action, version in (("actions/setup-node@", "node"), ("shivammathur/setup-php@", "php")):
@@ -152,7 +159,7 @@ else: sys.stdout.buffer.write(data)
 
         steps = workflow(".github/workflows/update-external-dependency.yml")["jobs"]["validate"]["steps"]
         execute = next(index for index, step in enumerate(steps) if step["name"] == "Install and validate candidate in an unprivileged job")
-        for action, key, version in (("actions/setup-node@", "node-version", "22"), ("shivammathur/setup-php@", "php-version", "8.3")):
+        for action, key, version in (("actions/setup-node@", "node-version", "24"), ("shivammathur/setup-php@", "php-version", "8.3")):
             setup = next(step for step in steps if step.get("uses", "").startswith(action))
             self.assertEqual(setup["with"][key], version)
             self.assertLess(steps.index(setup), execute)
@@ -235,6 +242,27 @@ else: sys.stdout.buffer.write(data)
         self.prepare(dependency, failure=True)
         self.assertEqual(candidate.files_for(self.root, dependency), before)
         self.assertFalse(self.output.exists())
+
+    def test_syft_bundle_keeps_exact_publisher_identity(self):
+        self.prepare("syft-binary")
+        arguments = json.loads(Path(self.env["COSIGN_ARGUMENTS"]).read_text())
+        self.assertEqual(arguments[0], "verify-blob")
+        self.assertTrue(arguments[arguments.index("--bundle") + 1].endswith("_checksums.txt.sigstore.json"))
+        self.assertEqual(arguments[arguments.index("--certificate-identity") + 1],
+                        "https://github.com/anchore/syft/.github/workflows/release.yaml@refs/heads/main")
+        self.assertEqual(arguments[arguments.index("--certificate-oidc-issuer") + 1],
+                        "https://token.actions.githubusercontent.com")
+        self.assertNotIn("--insecure-ignore-tlog", arguments)
+
+    def test_missing_bundle_and_bad_checksum_preserve_release_pins(self):
+        before = candidate.files_for(self.root, "syft-binary")
+        for boundary in ("FAIL_BUNDLE", "BAD_CHECKSUM"):
+            with self.subTest(boundary=boundary):
+                self.env[boundary] = "true"
+                self.prepare("syft-binary", failure=True)
+                self.assertEqual(candidate.files_for(self.root, "syft-binary"), before)
+                self.assertFalse(self.output.exists())
+                del self.env[boundary]
 
     def test_bad_signature_cannot_change_release_tool_pins(self):
         before = candidate.files_for(self.root, "syft-binary")

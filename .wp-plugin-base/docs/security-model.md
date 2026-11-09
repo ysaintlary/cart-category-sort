@@ -10,7 +10,7 @@ The intended default for the foundation repository and every project that consum
 - local workflow files committed in the project repository
 - vendored foundation source committed under `.wp-plugin-base/`
 - external actions pinned to full commit SHAs
-- a short allowlist of approved actions maintained in `scripts/lib/action-pins.json`
+- a short allowlist of approved actions maintained in `scripts/lib/action-pins.json`; foundation CI requires exactly these pins, while projects may choose their own full-SHA pins (and are responsible for reviewing them, for example that a pinned commit is a release of that action's repository)
 - read-only workflow permissions by default, with narrowly scoped write permissions only where required
 
 ## Approved Actions
@@ -18,13 +18,13 @@ The intended default for the foundation repository and every project that consum
 The current hardened baseline allows only these external actions:
 
 - `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`
-- `actions/setup-node@820762786026740c76f36085b0efc47a31fe5020`
-- `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
-- `actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c`
+- `actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1`
+- `actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9`
+- `actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333`
 - `actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8`
-- `github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2`
-- `ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc`
-- `shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240`
+- `github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee`
+- `ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e`
+- `shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962`
 
 The foundation intentionally does not depend on `peter-evans/create-pull-request`, `softprops/action-gh-release`, or `10up/action-wordpress-plugin-deploy`. Those duties are handled by repo-local scripts using `gh` or `svn`.
 
@@ -60,7 +60,7 @@ Foundation CI and generated project CI run `scripts/ci/audit_workflows.sh`.
 That audit fails if it finds:
 
 - an external action not pinned to a 40-character commit SHA
-- an external action outside the approved allowlist
+- an external action outside the approved allowlist (foundation CI only; project validation accepts project-owned full-SHA pins and lists them)
 - a local action whose `runs.using` is not `composite`
 - a composite local action that dispatches to a repo-local helper script through `node`, `python`, `bash`, or another interpreter instead of inlining the audited commands
 - a workflow without explicit top-level `permissions`
@@ -85,6 +85,7 @@ The hardened baseline audits literal workflow and repo-local-script references t
 - `woocommerce.com`
 - `auth.docker.io`
 - `registry-1.docker.io`
+- `registry.npmjs.org` (integrity-locked npm tooling bootstrap and dependency audits)
 - `token.actions.githubusercontent.com`
 - `accounts.google.com` (Cosign publisher certificate issuer)
 
@@ -130,13 +131,13 @@ Before `update-foundation` opens a PR, it verifies:
 - the release author is on the allowed author list
 - the vendored refresh is performed from the verified commit SHA, not by re-resolving the tag later
 
-For GitHub-hosted releases, consumers can also verify a released plugin ZIP independently after downloading it from the authoritative release host:
+For GitHub-hosted releases with `GITHUB_ARTIFACT_ATTESTATIONS_ENABLED=true`, consumers can also verify a released plugin ZIP independently after downloading it from the authoritative release host:
 
 ```bash
 gh attestation verify --owner <github-owner> path/to/plugin.zip
 ```
 
-That verifies the GitHub build attestation attached to the published release artifact without relying on local trust in the release notes alone. GitLab downstreams still rely on the Sigstore bundle and release metadata verification path documented below.
+That verifies the GitHub build attestation attached to the published release artifact without relying on local trust in the release notes alone. GitHub projects with attestations disabled and GitLab downstreams use the required Sigstore bundle verification path documented below. Disabling plugin attestations does not change foundation source verification.
 
 Release workflows now also attach a CycloneDX SBOM for the packaged artifact contents and a Sigstore keyless bundle for the released blob. Those cover different trust questions:
 
@@ -246,12 +247,24 @@ See also:
 
 ## Reviewed action migrations
 
-The workflow auditor reads the same action catalog as sync-time migration. Current
-pins are the only audit-approved values; predecessor pins are explicit migration
-inputs, never audit exceptions. Migration parses YAML action references, rejects
-unknown pins, tags, aliases, merged or duplicate keys, and unsafe paths, and changes only the
-reviewed scalar values. Custom scripts and comments are preserved. See the
-[update model](update-model.md#action-pin-ownership-and-migrations) for staging and
-first-upgrade requirements.
+The workflow auditor reads the same action catalog as sync-time migration. In
+foundation CI, current pins are the only audit-approved values; predecessor pins are
+explicit migration inputs, never audit exceptions. Projects own their action pins:
+project validation accepts any full-SHA pin, including a project's own Dependabot
+update in a managed workflow, and lists pins that differ from the catalog. Migration
+parses YAML action references, rejects tags, aliases, merged or duplicate keys, and
+unsafe paths, upgrades reviewed predecessors to the current pin, and keeps every
+other project pin. It changes only those scalar values. Custom scripts and comments
+are preserved. See the [update model](update-model.md#action-pin-ownership-and-migrations)
+for staging and first-upgrade requirements.
 
 The real WordPress browser fixture may contact its disposable localhost server from `scripts/foundation/test_runtime_packs_wordpress.sh`. The workflow host audit scopes that exception to this exact test entrypoint; it does not allow local/private production endpoints or private hosts in project configuration.
+
+## Explicit npm backports
+
+Projects that need a maintained npm security backport can use the finite,
+integrity-bound foundation catalog and a hash-bound application manifest. The
+security pack verifies installed bytes and the full advisory graph without
+mutating packages or changing severity policy. See
+[npm security remediations](npm-security-remediations.md) for installation,
+qualification, unsupported layouts and removal requirements.
