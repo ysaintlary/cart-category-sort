@@ -4,7 +4,7 @@ Tags: cart, sort, woocommerce, category, order
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -34,6 +34,13 @@ The sort is applied server-side on the cart contents array, so the Cart block, m
 To customise the groups, use the `ccs_sort_groups` filter in your theme or a custom plugin.
 
 == Changelog ==
+
+= 1.2.1 =
+* Update - chore: enable readiness/quality/security packs with PUC exclusions.
+* Update - chore: update wp-plugin-base to v1.10.2.
+* Fix - Revert "fix: add shell: bash to update-foundation runtime config step".
+* Fix - fix: add shell: bash to update-foundation runtime config step.
+
 
 = 1.2.0 =
 * Fix - fix: bump minimum PHP version to 8.0 for foundation v1.10.0 compatibility.
