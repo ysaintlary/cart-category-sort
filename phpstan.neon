@@ -1,0 +1,10 @@
+# Child-owned PHPStan overlay loaded after phpstan.neon.dist.
+
+parameters:
+  excludePaths:
+    - lib
+
+  ignoreErrors:
+    -
+      identifier: class.notFound
+      message: '#WC_Product|WC_Product_Variation#'
