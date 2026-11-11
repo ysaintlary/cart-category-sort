@@ -1,4 +1,4 @@
-=== Cart Category Sort ===
+=== YS | Cart Category Sort ===
 Contributors: ysaintlary
 Tags: cart, sort, woocommerce, category, order
 Requires at least: 6.5

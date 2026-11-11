@@ -80,12 +80,15 @@ define( 'CCS_OTHER_GROUP_RANK', 99 );
 
 /* ─── Compatibilité HPOS et blocs Panier / Commande ─── */
 
-add_action( 'before_woocommerce_init', function () {
-	if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
-		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__ );
-		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__ );
+add_action(
+	'before_woocommerce_init',
+	function () {
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__ );
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__ );
+		}
 	}
-} );
+);
 
 
 /* ─── Fonctions utilitaires ─── */
@@ -119,9 +122,12 @@ function ccs_get_product_group( $product_id ) {
 	$groups = ccs_get_sort_groups();
 
 	/* Trier les groupes par rang pour respecter la priorité en cas de conflit. */
-	usort( $groups, function ( $a, $b ) {
-		return $a['rang'] - $b['rang'];
-	} );
+	usort(
+		$groups,
+		function ( $a, $b ) {
+			return $a['rang'] - $b['rang'];
+		}
+	);
 
 	$category_ids = null;
 
@@ -211,17 +217,20 @@ function ccs_sort_cart() {
 	}
 
 	/* Tri stable par rang de groupe, puis alphabétique, puis par ordre d'ajout. */
-	uksort( $cart->cart_contents, function ( $a, $b ) use ( $positions ) {
-		$diff = $positions[ $a ]['group'] - $positions[ $b ]['group'];
-		if ( 0 !== $diff ) {
-			return $diff;
+	uksort(
+		$cart->cart_contents,
+		function ( $a, $b ) use ( $positions ) {
+			$diff = $positions[ $a ]['group'] - $positions[ $b ]['group'];
+			if ( 0 !== $diff ) {
+				return $diff;
+			}
+			$cmp = strnatcasecmp( $positions[ $a ]['name'], $positions[ $b ]['name'] );
+			if ( 0 !== $cmp ) {
+				return $cmp;
+			}
+			return $positions[ $a ]['index'] - $positions[ $b ]['index'];
 		}
-		$cmp = strnatcasecmp( $positions[ $a ]['name'], $positions[ $b ]['name'] );
-		if ( 0 !== $cmp ) {
-			return $cmp;
-		}
-		return $positions[ $a ]['index'] - $positions[ $b ]['index'];
-	} );
+	);
 }
 
 
