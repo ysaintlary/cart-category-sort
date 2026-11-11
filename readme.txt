@@ -2,7 +2,7 @@
 Contributors: ysaintlary
 Tags: cart, sort, woocommerce, category, order
 Requires at least: 6.5
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 8.0
 Stable tag: 1.2.2
 License: GPL-3.0-or-later
