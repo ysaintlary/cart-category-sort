@@ -8,3 +8,6 @@ parameters:
     -
       identifier: class.notFound
       message: '#WC_Product|WC_Product_Variation#'
+    -
+      identifier: function.notFound
+      message: '#^Function WC not found#'

@@ -24,9 +24,7 @@
   <exclude-pattern>*/lib/wp-plugin-base/*</exclude-pattern>
 
   <rule ref="WordPress-Core"/>
-  <rule ref="WordPress-Extra">
-    <exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
-  </rule>
+  <rule ref="WordPress-Extra"/>
   <rule ref="PHPCompatibilityWP"/>
 
 </ruleset>
