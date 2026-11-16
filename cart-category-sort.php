@@ -140,7 +140,7 @@ function ccs_get_product_group( $product_id ) {
 		} elseif ( 'category' === $group['type'] ) {
 			/* Charger les catégories du produit une seule fois. */
 			if ( null === $category_ids ) {
-				$terms = get_the_terms( $product_id, 'product_cat' );
+				$terms        = get_the_terms( $product_id, 'product_cat' );
 				$category_ids = ( $terms && ! is_wp_error( $terms ) )
 					? wp_list_pluck( $terms, 'term_id' )
 					: array();
@@ -236,11 +236,11 @@ function ccs_sort_cart() {
 
 /* ─── Accrochage aux événements du panier ─── */
 
-/* Tri au chargement du panier depuis la session (couvre le bloc Panier,
-   le mini-panier, la page de commande et les requêtes Store API
-   de mise à jour de quantité ou de suppression). */
+// Tri au chargement du panier depuis la session (couvre le bloc Panier,
+// le mini-panier, la page de commande et les requêtes Store API
+// de mise à jour de quantité ou de suppression).
 add_action( 'woocommerce_cart_loaded_from_session', 'ccs_sort_cart', 100 );
 
-/* Tri immédiat après ajout d'un produit, pour que la réponse
-   Store API soit déjà dans le bon ordre. */
+// Tri immédiat après ajout d'un produit, pour que la réponse
+// Store API soit déjà dans le bon ordre.
 add_action( 'woocommerce_add_to_cart', 'ccs_sort_cart', 100 );
