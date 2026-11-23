@@ -105,7 +105,18 @@ assert_file_contains_literal "$ROOT_DIR/templates/child/.github/workflows/releas
 assert_file_contains_literal "$ROOT_DIR/scripts/release/publish_github_release.sh" '--verify-tag' "GitHub release publication must verify that the tag already exists."
 assert_file_contains_literal "$ROOT_DIR/scripts/release/publish_github_release.sh" '--draft=false' "GitHub release repair must clear draft state after assets are present."
 assert_file_contains_literal "$ROOT_DIR/scripts/ci/install_lint_tools.sh" '--require-hashes' "Foundation lint tool bootstrap must install Python tools from hash-pinned requirements."
+assert_file_contains_literal "$ROOT_DIR/scripts/ci/run_semgrep_security.sh" '--no-trace' "Managed Semgrep scans must keep OpenTelemetry header extraction disabled."
+assert_file_contains_literal "$ROOT_DIR/.github/workflows/foundation-ci.yml" 'semgrep --no-trace --test' "Semgrep rule tests must keep OpenTelemetry header extraction disabled."
 assert_file_contains_literal "$ROOT_DIR/scripts/ci/install_lint_tools.sh" 'npm ci --ignore-scripts --no-audit --no-fund' "Foundation lint tool bootstrap must install markdownlint from the committed npm lockfile."
+# Starter package updates must also update the managed migration guide.
+admin_ui_guide="$ROOT_DIR/templates/child/admin-ui-pack/docs/admin-ui-pack.md"
+admin_ui_dataviews_version="$(jq -er '.devDependencies["@wordpress/dataviews"]' "$ROOT_DIR/templates/child/admin-ui-pack-seed-dataviews/.wp-plugin-base-admin-ui/package.json")"
+admin_ui_scripts_version="$(jq -er '.devDependencies["@wordpress/scripts"]' "$ROOT_DIR/templates/child/admin-ui-pack-seed-basic/.wp-plugin-base-admin-ui/package.json")"
+admin_ui_extraction_version="$(jq -er '.packages["node_modules/@wordpress/dependency-extraction-webpack-plugin"].version' "$ROOT_DIR/templates/child/admin-ui-pack-seed-dataviews/.wp-plugin-base-admin-ui/package-lock.json")"
+assert_file_contains_literal "$admin_ui_guide" "DataViews $admin_ui_dataviews_version" "Admin UI guide must name the current DataViews version."
+assert_file_contains_literal "$admin_ui_guide" '@wordpress/scripts` '"$admin_ui_scripts_version" "Admin UI guide must name the current WordPress scripts version."
+assert_file_contains_literal "$admin_ui_guide" '@wordpress/dependency-extraction-webpack-plugin` '"$admin_ui_extraction_version" "Admin UI guide must name the current qualified extraction version."
+
 assert_file_contains_literal "$ROOT_DIR/scripts/foundation/check_wordpress_env_tooling.sh" 'npm audit --package-lock-only --audit-level=high' "WordPress env tooling check must fail on high-severity committed lockfile advisories."
 assert_file_contains_literal "$ROOT_DIR/scripts/foundation/run_foundation_policy_checks.sh" 'test_validate_config_scope.sh' "Foundation policy checks must include config scope validation tests."
 assert_file_contains_literal "$ROOT_DIR/scripts/foundation/run_foundation_policy_checks.sh" 'test_validate_config_runtime_pack_contracts.sh' "Foundation policy checks must include runtime-pack config contract tests."
@@ -120,16 +131,43 @@ assert_file_contains_literal "$ROOT_DIR/.github/dependabot.yml" 'directory: /too
 assert_file_contains_literal "$ROOT_DIR/.github/dependabot.yml" 'directory: /tools/python-semgrep' "Dependabot must manage Semgrep tooling updates."
 assert_file_contains_literal "$ROOT_DIR/.github/dependabot.yml" 'directory: /templates/child/quality-pack/.wp-plugin-base-quality-pack' "Dependabot must manage quality-pack Composer updates."
 assert_file_contains_literal "$ROOT_DIR/.github/dependabot.yml" 'directory: /templates/child/security-pack/.wp-plugin-base-security-pack' "Dependabot must manage security-pack Composer updates."
+admin_ui_manifests=(
+  "$ROOT_DIR/templates/child/admin-ui-pack-seed-basic/.wp-plugin-base-admin-ui/package.json"
+  "$ROOT_DIR/templates/child/admin-ui-pack-seed-dataviews/.wp-plugin-base-admin-ui/package.json"
+  "$ROOT_DIR/tests/fixtures/existing-application/package.json"
+)
+# Shared @wordpress/* and React packages are qualified together; one drifting manifest must fail.
+jq -es '
+  (map(.overrides // {}) | unique | length == 1) and
+  ([.[] | (.dependencies // {}), (.devDependencies // {}) | to_entries[]
+    | select((.key | startswith("@wordpress/")) or (.key | test("^(react|react-dom|@types/react(-dom)?)$")))]
+    | group_by(.key) | all(map(.value) | unique | length == 1))
+' "${admin_ui_manifests[@]}" >/dev/null || {
+  echo "Admin UI starter and existing-application manifests must share identical overrides and @wordpress/* and React versions." >&2
+  exit 1
+}
+ruby -rpsych -e '
+  root = ARGV.shift
+  updates = Psych.safe_load(File.read(File.join(root, ".github/dependabot.yml")), aliases: false).fetch("updates")
+  ARGV.each do |manifest|
+    directory = File.dirname(manifest.delete_prefix(root))
+    entry = updates.find { |update| update["package-ecosystem"] == "npm" && update["directory"] == directory }
+    patterns = entry && entry.dig("groups", "wordpress-packages", "patterns")
+    abort "Dependabot must group @wordpress/* updates for #{directory}." unless patterns == ["@wordpress/*"]
+  end
+' "$ROOT_DIR" "${admin_ui_manifests[@]}"
 assert_file_contains_literal "$ROOT_DIR/.github/workflows/update-plugin-check.yml" 'concurrency:' "update-plugin-check workflow must serialize update automation."
 assert_file_contains_literal "$ROOT_DIR/.github/workflows/update-foundation.yml" 'concurrency:' "update-foundation workflow must serialize update automation."
 assert_file_contains_literal "$ROOT_DIR/.github/workflows/finalize-release.yml" 'concurrency:' "finalize-release workflow must serialize release publication."
 assert_file_contains_literal "$ROOT_DIR/.github/workflows/finalize-foundation-release.yml" 'concurrency:' "finalize-foundation-release workflow must serialize foundation release publication."
-assert_file_contains_literal "$ROOT_DIR/docs/security-model.md" 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' "Security documentation must advertise the reviewed upload-artifact SHA."
+assert_file_contains_literal "$ROOT_DIR/docs/security-model.md" 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' "Security documentation must advertise the reviewed upload-artifact SHA."
 reviewed_sarif_pin="$(jq -er '.actions["github/codeql-action/upload-sarif"].current | select(test("^[a-f0-9]{40}$"))' "$ROOT_DIR/scripts/lib/action-pins.json")"
 assert_file_contains_literal "$ROOT_DIR/.github/workflows/ci.yml" "github/codeql-action/upload-sarif@$reviewed_sarif_pin" "Root CI workflow must pin upload-sarif to the reviewed SHA."
 assert_file_contains_literal "$ROOT_DIR/templates/child/.github/workflows/ci.yml" "github/codeql-action/upload-sarif@$reviewed_sarif_pin" "Child CI workflow must pin upload-sarif to the reviewed SHA."
 assert_file_contains_literal "$ROOT_DIR/docs/security-model.md" "github/codeql-action/upload-sarif@$reviewed_sarif_pin" "Security documentation must advertise the reviewed upload-sarif SHA."
 assert_file_contains_literal "$ROOT_DIR/scripts/ci/audit_workflows.sh" 'ruby "$SCRIPT_DIR/../lib/action_pins.rb" "${audit_yaml_files[@]}"' "Workflow audit must use the shared action catalog."
+assert_file_contains_literal "$ROOT_DIR/scripts/foundation/validate.sh" 'export WP_PLUGIN_BASE_FOUNDATION_TOOL_AUDIT=strict' "Foundation validation must block on its own pack tool lock advisories."
+assert_file_contains_literal "$ROOT_DIR/scripts/foundation/validate-full.sh" 'export WP_PLUGIN_BASE_FOUNDATION_TOOL_AUDIT=strict' "The full foundation suite must block on its own pack tool lock advisories."
 ruby - "$ROOT_DIR" <<'RUBY'
 require File.join(ARGV.fetch(0), 'scripts/lib/action_pins')
 policy = WPPluginBaseActionPins.catalog
