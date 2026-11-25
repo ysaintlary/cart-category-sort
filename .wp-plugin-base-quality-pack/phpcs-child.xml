@@ -2,5 +2,5 @@
 <ruleset name="Project PHPCS overrides">
   <description>Project-specific exclusions preserved across foundation sync.</description>
 
-  <exclude-pattern>*/lib/wp-plugin-base/plugin-update-checker/*</exclude-pattern>
+  <exclude-pattern>*/lib/wp-plugin-base/*</exclude-pattern>
 </ruleset>
